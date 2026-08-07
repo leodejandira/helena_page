@@ -17,6 +17,20 @@ async function fetchTasks() {
 }
 
 /**
+ * Busca uma única tarefa pelo id.
+ * Usado principalmente pelo módulo de dependências.
+ * @param {number} id
+ * @returns {Promise<Object>} tarefa
+ */
+async function fetchTaskById(id) {
+    const response = await fetch(`${API_URL}/${id}`);
+    if (!response.ok) {
+        throw new Error(`Erro ao buscar tarefa ${id}: ${response.status}`);
+    }
+    return response.json();
+}
+
+/**
  * Cria uma nova tarefa.
  * @param {Object} payload dados da tarefa (sem id)
  * @returns {Promise<Object>} tarefa criada

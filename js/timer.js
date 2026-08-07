@@ -1,18 +1,23 @@
 // timer.js
-// Responsável SOMENTE pelo timer: iniciar, pausar, contar tempo, salvar progresso.
-// Depende de: activeTask/elapsedSeconds/timerInterval (state.js), updateTaskAPI (tasks.js).
+// Responsável SOMENTE pelo controle de tempo: iniciar, pausar, contar,
+// exibir e persistir o tempo decorrido.
+// Este módulo NÃO decide status "Concluída" e NÃO conhece regra de negócio
+// de tarefa (isso é responsabilidade de tasks.js / dependencies.js).
+// Depende de: activeTask/elapsedSeconds/timerInterval (state.js),
+// updateTaskAPI (tasks.js), showToast (ui.js).
 
 function updateTimerDisplay() {
     const h = String(Math.floor(elapsedSeconds / 3600)).padStart(2, "0");
     const m = String(Math.floor((elapsedSeconds % 3600) / 60)).padStart(2, "0");
     const s = String(elapsedSeconds % 60).padStart(2, "0");
-    document.getElementById("m-timer").innerText = `${h}:${m}:${s}`;
+    const el = document.getElementById("m-timer");
+    if (el) el.innerText = `${h}:${m}:${s}`;
 }
 
 /**
  * Inicia (ou retoma) a contagem do timer.
  * Se a tarefa ainda estiver "Preparada", muda automaticamente para "Em andamento"
- * e salva no backend.
+ * e salva no backend (transição de estado simples, não é a regra de conclusão).
  */
 function startTimer() {
     if (timerInterval) return; // já está rodando
@@ -20,7 +25,8 @@ function startTimer() {
 
     if (activeTask.status === "Preparada") {
         activeTask.status = "Em andamento";
-        document.getElementById("m-status").innerText = "Em andamento";
+        const statusEl = document.getElementById("m-status");
+        if (statusEl) statusEl.innerText = "Em andamento";
         updateTaskAPI(activeTask.id, { status: "Em andamento" }, { silent: true });
     }
 
@@ -36,30 +42,48 @@ function pauseTimer() {
 }
 
 /**
- * Salva o progresso acumulado no backend.
- * @param {boolean} isFinished se true, marca a tarefa como "Concluída"
+ * Retorna o tempo decorrido na sessão atual, em horas.
+ * Puro cálculo - não persiste nada.
+ * @returns {number}
  */
-async function saveProgress(isFinished) {
+function getElapsedHours() {
+    return elapsedSeconds / 3600;
+}
+
+/**
+ * Zera o contador local (visual) da sessão atual.
+ */
+function resetElapsedTime() {
+    elapsedSeconds = 0;
+    updateTimerDisplay();
+}
+
+/**
+ * Persiste o tempo acumulado da sessão atual no backend, SEM alterar o
+ * status da tarefa para um estado final. Usado pela ação
+ * "Interromper Momentaneamente (Salva Tempo)".
+ */
+async function saveElapsedTime() {
     if (!activeTask) return;
     pauseTimer();
 
-    const horasAdicionadas = elapsedSeconds / 3600;
-    const novoTempoGasto = activeTask.tempo_gasto_h + horasAdicionadas;
-    const novoStatus = isFinished ? "Concluída" : "Em andamento";
+    const horasAdicionadas = getElapsedHours();
+    const novoTempoGasto = (activeTask.tempo_gasto_h || 0) + horasAdicionadas;
 
-    const atualizada = await updateTaskAPI(activeTask.id, {
-        tempo_gasto_h: novoTempoGasto,
-        status: novoStatus
-    });
+    try {
+        const atualizada = await updateTaskAPI(activeTask.id, {
+            tempo_gasto_h: novoTempoGasto
+        });
 
-    if (isFinished) {
-        alert("Tarefa concluída com sucesso!");
-        closeModal();
-    } else {
-        alert(`Tempo salvo! Total atualizado: ${novoTempoGasto.toFixed(2)}h`);
-        activeTask = atualizada || { ...activeTask, tempo_gasto_h: novoTempoGasto, status: novoStatus };
-        elapsedSeconds = 0;
-        updateTimerDisplay();
-        document.getElementById("m-banco-tempo").innerText = activeTask.tempo_gasto_h.toFixed(2);
+        activeTask = atualizada || { ...activeTask, tempo_gasto_h: novoTempoGasto };
+        resetElapsedTime();
+
+        const bancoEl = document.getElementById("m-banco-tempo");
+        if (bancoEl) bancoEl.innerText = Number(activeTask.tempo_gasto_h).toFixed(2);
+
+        showToast(`Tempo salvo! Total atualizado: ${Number(activeTask.tempo_gasto_h).toFixed(2)}h`, "success");
+    } catch (err) {
+        console.error(err);
+        showToast("Não foi possível salvar o tempo. Tente novamente.", "error");
     }
 }

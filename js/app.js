@@ -1,5 +1,5 @@
 // app.js
-// Responsável por: inicialização da aplicação e eventos globais.
+// Responsável por: inicialização da aplicação e ligação dos eventos globais.
 
 function switchTab(index) {
     document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", i === index));
@@ -8,7 +8,7 @@ function switchTab(index) {
 }
 
 function initEventListeners() {
-    // Abas
+    // Abas internas da página Tasks (Tarefas & Filtros / Nova Tarefa)
     document.querySelectorAll(".tab").forEach((tab, i) => {
         tab.addEventListener("click", () => switchTab(i));
     });
@@ -23,16 +23,26 @@ function initEventListeners() {
     document.getElementById("f-custo-max").addEventListener("input", renderTable);
     document.getElementById("f-data-max").addEventListener("change", renderTable);
 
-    // Timer / modal
+    // Timer (controle de tempo puro - timer.js)
     document.getElementById("btn-start").addEventListener("click", startTimer);
     document.getElementById("btn-pause").addEventListener("click", pauseTimer);
-    document.getElementById("btn-interrupt").addEventListener("click", () => saveProgress(false));
-    document.getElementById("btn-finish").addEventListener("click", () => saveProgress(true));
+    document.getElementById("btn-interrupt").addEventListener("click", saveElapsedTime);
+
+    // Conclusão da tarefa (regra de negócio - tasks.js/completeTask, que por
+    // sua vez consulta dependencies.js antes de persistir)
+    document.getElementById("btn-finish").addEventListener("click", () => completeTask(activeTask));
+
+    // Cancelamento e fechamento do modal
     document.getElementById("btn-cancel-modal").addEventListener("click", cancelActiveTaskFromModal);
     document.getElementById("btn-close-modal").addEventListener("click", closeModal);
+    document.getElementById("btn-close-modal-x").addEventListener("click", closeModal);
+
+    // Notas
+    document.getElementById("btn-save-notes").addEventListener("click", saveNotes);
 }
 
 function init() {
+    initNav();
     populateFilterOptions();
     renderStatusFilterButtons();
     initEventListeners();

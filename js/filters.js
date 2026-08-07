@@ -64,7 +64,7 @@ function renderStatusFilterButtons() {
 }
 
 /**
- * Define o filtro rápido de status ativo e re-renderiza a tabela.
+ * Define o filtro rápido de status ativo e re-renderiza a lista.
  * @param {string} key uma das chaves de STATUS_FILTERS
  */
 function setStatusFilter(key) {
