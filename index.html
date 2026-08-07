@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MS Helena Tasks - V2</title>
+    <style>
+        :root { --primary: #007bff; --bg: #f4f4f9; --border: #ccc; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: var(--bg); }
+        h1 { color: #333; }
+        
+        /* Abas */
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+        .tab { padding: 10px 20px; cursor: pointer; background: #e0e0e0; margin-right: 5px; border-radius: 5px 5px 0 0; font-weight: bold; }
+        .tab.active { background: var(--primary); color: white; }
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 0 0 5px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+
+        /* Formulários e Filtros */
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input, select { padding: 8px; border: 1px solid var(--border); border-radius: 4px; }
+        button { padding: 10px 15px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        
+        /* Tabela */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
+        th { background-color: #f2f2f2; }
+        tr:hover { background-color: #f9f9f9; cursor: pointer; }
+        
+        /* Modal e Timer */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal { background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; text-align: center; }
+        .timer-display { font-size: 40px; font-weight: bold; margin: 20px 0; font-family: monospace; color: #333; }
+        .timer-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn-start { background: #28a745; }
+        .btn-pause { background: #ffc107; color: black; }
+        .btn-interrupt { background: #17a2b8; grid-column: span 2; }
+        .btn-finish { background: #dc3545; grid-column: span 2; }
+        .btn-close { background: #6c757d; margin-top: 15px; width: 100%; }
+        
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; }
+        .bg-preparada { background: #6c757d; }
+        .bg-andamento { background: #007bff; }
+        .bg-concluida { background: #28a745; }
+    </style>
+</head>
+<body>
+
+    <h1>MS Helena Tasks Manager</h1>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(0)">Tarefas & Filtros</div>
+        <div class="tab" onclick="switchTab(1)">Nova Tarefa</div>
+    </div>
+
+    <!-- ABA 1: LISTAGEM E FILTROS -->
+    <div class="tab-content active" id="tab-0">
+        <div class="grid-form" style="background: var(--bg); padding: 15px; border-radius: 5px;">
+            <div class="form-group">
+                <label>Grupo</label>
+                <select id="f-grupo" onchange="renderTable()"><option value="">Todos</option><option>BB</option><option>IBM</option><option>Pessoal</option></select>
+            </div>
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="f-categoria" onchange="renderTable()"><option value="">Todas</option><option>Tarefa</option><option>Compra</option></select>
+            </div>
+            <div class="form-group">
+                <label>Complexidade</label>
+                <select id="f-complex" onchange="renderTable()"><option value="">Todas</option><option>Baixa</option><option>Média</option><option>Alta</option></select>
+            </div>
+            <div class="form-group">
+                <label>Criticidade</label>
+                <select id="f-crit" onchange="renderTable()"><option value="">Todas</option><option>Normal</option><option>Urgente</option></select>
+            </div>
+            <div class="form-group">
+                <label>Custo Máximo (R$)</label>
+                <input type="number" id="f-custo-max" oninput="renderTable()" placeholder="Ex: 100">
+            </div>
+            <div class="form-group">
+                <label>Deadline Limite</label>
+                <input type="date" id="f-data-max" onchange="renderTable()">
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th><th>Grupo</th><th>Status</th><th>Criticidade</th><th>Custo</th><th>Tempo Gasto (h)</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+
+    <!-- ABA 2: CADASTRO -->
+    <div class="tab-content" id="tab-1">
+        <form id="task-form" onsubmit="createTask(event)">
+            <div class="grid-form">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Nome do Item / Tarefa *</label>
+                    <input type="text" id="t-nome" required>
+                </div>
+                <div class="form-group">
+                    <label>Grupo *</label>
+                    <select id="t-grupo"><option>BB</option><option>IBM</option><option>Pessoal</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select id="t-categoria"><option>Tarefa</option><option>Compra</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Complexidade</label>
+                    <select id="t-complex"><option>Baixa</option><option>Média</option><option>Alta</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Criticidade</label>
+                    <select id="t-crit"><option>Normal</option><option>Urgente</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Custo (R$)</label>
+                    <input type="number" id="t-custo" step="0.01" value="0.0">
+                </div>
+                <div class="form-group">
+                    <label>Tempo Estimado (h)</label>
+                    <input type="number" id="t-tempo-ext" step="0.1" value="0.0">
+                </div>
+                <div class="form-group">
+                    <label>Data Limite</label>
+                    <input type="date" id="t-data">
+                </div>
+            </div>
+            <button type="submit">Salvar Tarefa</button>
+        </form>
+    </div>
+
+    <!-- MODAL DO TIMER -->
+    <div class="modal-overlay" id="timer-modal">
+        <div class="modal">
+            <h3 id="m-title">Nome da Tarefa</h3>
+            <p>Status atual: <span id="m-status"></span></p>
+            <p>Tempo já salvo no banco: <strong id="m-banco-tempo">0.00</strong>h</p>
+            
+            <div class="timer-display" id="m-timer">00:00:00</div>
+            
+            <div class="timer-controls">
+                <button class="btn-start" onclick="startTimer()">Iniciar / Retomar</button>
+                <button class="btn-pause" onclick="pauseTimer()">Pausar</button>
+                <button class="btn-interrupt" onclick="saveProgress(false)">Interromper Momentaneamente (Salva Tempo)</button>
+                <button class="btn-finish" onclick="saveProgress(true)">Concluir Tarefa</button>
+            </div>
+            <button class="btn-close" onclick="closeModal()">Fechar</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÕES ---
+        const API_URL = "https://ms-helena-tasks-manager.onrender.com/items";
+        let allTasks = [];
+        
+        // Variáveis do Timer
+        let activeTask = null;
+        let timerInterval = null;
+        let elapsedSeconds = 0;
+
+        // --- NAVEGAÇÃO ---
+        function switchTab(index) {
+            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
+            document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === index));
+            if (index === 0) fetchTasks();
+        }
+
+        // --- COMUNICAÇÃO COM API ---
+        async function fetchTasks() {
+            try {
+                const response = await fetch(API_URL + "/");
+                allTasks = await response.json();
+                renderTable();
+            } catch (e) { console.error("Erro ao buscar tarefas", e); }
+        }
+
+        async function createTask(e) {
+            e.preventDefault();
+            const payload = {
+                item: document.getElementById('t-nome').value,
+                grupo: document.getElementById('t-grupo').value,
+                categoria: document.getElementById('t-categoria').value,
+                complexidade: document.getElementById('t-complex').value,
+                criticidade: document.getElementById('t-crit').value,
+                custo: parseFloat(document.getElementById('t-custo').value || 0),
+                tempo_ext_h: parseFloat(document.getElementById('t-tempo-ext').value || 0),
+                data_limite: document.getElementById('t-data').value || null,
+                status: "Preparada",
+                tempo_gasto_h: 0.0
+            };
+
+            await fetch(API_URL + "/", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            document.getElementById('task-form').reset();
+            alert("Tarefa salva!");
+        }
+
+        async function updateTaskAPI(taskId, partialData) {
+            await fetch(`${API_URL}/${taskId}`, {
+                method: 'PUT', // Ajuste para PATCH se seu backend exigir
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(partialData)
+            });
+            fetchTasks(); // Recarrega os dados reais do banco
+        }
+
+        // --- RENDERIZAÇÃO E FILTROS ---
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            // Captura os filtros
+            const fg = document.getElementById('f-grupo').value;
+            const fc = document.getElementById('f-categoria').value;
+            const fx = document.getElementById('f-complex').value;
+            const fcr = document.getElementById('f-crit').value;
+            const fCustoMax = parseFloat(document.getElementById('f-custo-max').value);
+            const fDataMax = document.getElementById('f-data-max').value;
+
+            // Filtra localmente para resposta instantânea
+            const filtered = allTasks.filter(t => {
+                if (fg && t.grupo !== fg) return false;
+                if (fc && t.categoria !== fc) return false;
+                if (fx && t.complexidade !== fx) return false;
+                if (fcr && t.criticidade !== fcr) return false;
+                if (!isNaN(fCustoMax) && t.custo > fCustoMax) return false;
+                if (fDataMax && t.data_limite && t.data_limite > fDataMax) return false;
+                return true;
+            });
+
+            filtered.forEach(t => {
+                let badge = 'bg-preparada';
+                if (t.status === 'Em andamento') badge = 'bg-andamento';
+                if (t.status === 'Concluída') badge = 'bg-concluida';
+
+                const tr = document.createElement('tr');
+                tr.onclick = () => openModal(t);
+                tr.innerHTML = `
+                    <td><strong>${t.item}</strong></td>
+                    <td>${t.grupo}</td>
+                    <td><span class="status-badge ${badge}">${t.status}</span></td>
+                    <td>${t.criticidade}</td>
+                    <td>R$ ${t.custo.toFixed(2)}</td>
+                    <td>${t.tempo_gasto_h.toFixed(2)} h</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- LÓGICA DO TIMER E MODAL ---
+        function openModal(task) {
+            activeTask = task;
+            elapsedSeconds = 0; // Zera o contador local (na tela)
+            
+            document.getElementById('m-title').innerText = task.item;
+            document.getElementById('m-status').innerText = task.status;
+            document.getElementById('m-banco-tempo').innerText = task.tempo_gasto_h.toFixed(2);
+            updateTimerDisplay();
+            
+            document.getElementById('timer-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            pauseTimer();
+            document.getElementById('timer-modal').style.display = 'none';
+        }
+
+        function updateTimerDisplay() {
+            const h = String(Math.floor(elapsedSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((elapsedSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(elapsedSeconds % 60).padStart(2, '0');
+            document.getElementById('m-timer').innerText = `${h}:${m}:${s}`;
+        }
+
+        function startTimer() {
+            if (timerInterval) return; // Já está rodando
+            
+            // Muda o status para em andamento no banco logo ao dar play
+            if (activeTask.status !== 'Em andamento') {
+                activeTask.status = 'Em andamento';
+                document.getElementById('m-status').innerText = 'Em andamento';
+                updateTaskAPI(activeTask.id, { ...activeTask, status: 'Em andamento' });
+            }
+
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        async function saveProgress(isFinished) {
+            pauseTimer();
+            
+            // Converte os segundos rodados na sessão para horas (ex: 30 min = 0.5h)
+            const horasAdicionadas = elapsedSeconds / 3600;
+            const novoTempoGasto = activeTask.tempo_gasto_h + horasAdicionadas;
+            const novoStatus = isFinished ? 'Concluída' : 'Em andamento';
+
+            // Prepara o objeto completo com os dados atualizados para enviar ao backend
+            const taskAtualizada = {
+                ...activeTask,
+                tempo_gasto_h: novoTempoGasto,
+                status: novoStatus
+            };
+
+            await updateTaskAPI(activeTask.id, taskAtualizada);
+            
+            if (isFinished) {
+                alert("Tarefa concluída com sucesso!");
+                closeModal();
+            } else {
+                alert(`Tempo salvo! Total atualizado: ${novoTempoGasto.toFixed(2)}h`);
+                // Atualiza o modal sem fechar
+                activeTask = taskAtualizada;
+                elapsedSeconds = 0; 
+                updateTimerDisplay();
+                document.getElementById('m-banco-tempo').innerText = novoTempoGasto.toFixed(2);
+            }
+        }
+
+        // Inicialização
+        fetchTasks();
+    </script>
+</body>
+</html>
