@@ -112,4 +112,11 @@ function closeModal() {
     pauseTimer();
     document.getElementById("timer-modal").classList.remove("open");
     activeTask = null;
+
+    // Ponto de extensão opcional: se definido (daily-tasks.js), permite
+    // que outra parte da aplicação reaja ao fechamento do modal, sem que
+    // modal.js precise conhecer nada sobre Tarefas de Hoje.
+    if (typeof onModalClosed === "function") {
+        onModalClosed();
+    }
 }

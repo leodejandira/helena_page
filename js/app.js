@@ -5,6 +5,7 @@ function switchTab(index) {
     document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", i === index));
     document.querySelectorAll(".tab-content").forEach((c, i) => c.classList.toggle("active", i === index));
     if (index === 0) loadTasks();
+    if (index === 2) loadDailyTasks();
 }
 
 function initEventListeners() {

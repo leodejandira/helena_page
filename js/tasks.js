@@ -15,6 +15,10 @@ async function loadTasks() {
 
     try {
         allTasks = await fetchTasks();
+        // Carrega o mapa de tarefas de hoje (item_id -> daily_task) para que
+        // o botão "Adicionar/Remover das tarefas de hoje" reflita o estado
+        // real do backend (daily-tasks.js).
+        await loadTodayMap();
         renderTable();
     } catch (e) {
         console.error("Erro ao buscar tarefas", e);
@@ -74,6 +78,11 @@ function renderTable() {
     filtered.forEach(t => {
         const badge = getStatusConfig(t.status).badgeClass;
         const canCancel = ACTIVE_STATUSES.includes(t.status);
+        // Reflete o estado REAL vindo do backend (todayMap, carregado em
+        // loadTasks() via loadTodayMap() - ver daily-tasks.js), nunca um
+        // estado local otimista.
+        const isInToday = !!(typeof todayMap !== "undefined" && todayMap[t.id]);
+        const todayBtnLabel = isInToday ? "Remover das tarefas de hoje" : "Adicionar às tarefas de hoje";
 
         // --- linha da tabela (desktop) ---
         const tr = document.createElement("tr");
@@ -87,11 +96,13 @@ function renderTable() {
             <td class="col-actions">
                 <button type="button" class="btn-small btn-open">Abrir</button>
                 ${canCancel ? `<button type="button" class="btn-small btn-cancel-task">Cancelar</button>` : ""}
+                <button type="button" class="btn-small btn-toggle-today">${todayBtnLabel}</button>
             </td>
         `;
         tr.querySelector(".btn-open").onclick = () => openModal(t);
         const cancelBtnRow = tr.querySelector(".btn-cancel-task");
         if (cancelBtnRow) cancelBtnRow.onclick = () => cancelTask(t.id);
+        tr.querySelector(".btn-toggle-today").onclick = () => toggleToday(t.id);
         tbody.appendChild(tr);
 
         // --- card (mobile) ---
@@ -110,10 +121,14 @@ function renderTable() {
                 <button type="button" class="btn-open">Abrir</button>
                 ${canCancel ? `<button type="button" class="btn-cancel-task">Cancelar</button>` : ""}
             </div>
+            <div class="task-card-actions">
+                <button type="button" class="btn-toggle-today">${todayBtnLabel}</button>
+            </div>
         `;
         card.querySelector(".btn-open").onclick = () => openModal(t);
         const cancelBtnCard = card.querySelector(".btn-cancel-task");
         if (cancelBtnCard) cancelBtnCard.onclick = () => cancelTask(t.id);
+        card.querySelector(".btn-toggle-today").onclick = () => toggleToday(t.id);
         cardsContainer.appendChild(card);
     });
 }

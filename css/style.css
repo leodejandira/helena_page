@@ -318,6 +318,37 @@ button:active { transform: scale(0.98); }
 .btn-open { background: var(--primary); }
 .btn-cancel-task { background: var(--status-cancelado); }
 
+/* ===== Tarefas de Hoje: reordenação e toggle ===== */
+.btn-order {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    margin-right: 4px;
+    background: #6c757d;
+}
+
+.btn-order:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.btn-order:disabled:hover { background: #6c757d; }
+
+.btn-toggle-today { background: #17a2b8; }
+.btn-complete-daily { background: var(--status-concluida); }
+.btn-cancel-daily { background: var(--status-cancelado); }
+.btn-remove-daily { background: #6c757d; }
+
+.task-card-actions .btn-toggle-today,
+.task-card-actions .btn-complete-daily,
+.task-card-actions .btn-cancel-daily,
+.task-card-actions .btn-remove-daily,
+.task-card-actions .btn-order {
+    flex: 1;
+    padding: 10px;
+    font-size: 13px;
+}
+
 /* ===== Badges de status ===== */
 .status-badge {
     display: inline-block;
