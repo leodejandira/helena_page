@@ -9,7 +9,9 @@ const GROUPS = [
     "Angelo",
     "BB",
     "IBM",
-    "Pessoal"
+    "Pessoal",
+    "Carreira/Estudos",
+    "Angelo"
 ];
 
 const CATEGORIES = [
